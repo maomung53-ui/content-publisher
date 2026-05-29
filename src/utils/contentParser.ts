@@ -295,15 +295,43 @@ export function parseMarkdown(content: string): ParseResult {
         })
       }
 
+      // ---- 引用块 ----
+      else if (token.type === 'blockquote') {
+        const bq = token as Tokens.Blockquote
+        // 将引用块文本加入正文（去除 > 前缀）
+        const cleanedText = bq.text.replace(/^[> ]+/gm, '').trim()
+        if (cleanedText) {
+          metadata.paragraphs.push(cleanedText)
+          collectLinks(bq.tokens, metadata.links, currentLine)
+          collectImages(bq.tokens, metadata.images, currentLine)
+          extractTags(cleanedText).forEach((t) => tagSet.add(t))
+        }
+      }
+
       // ---- 列表 ----
       else if (token.type === 'list') {
         const list = token as Tokens.List
-        // 遍历列表项，提取其中可能的内联链接、图片、标签
+        // 遍历列表项，提取文本加入正文、内联链接、图片、标签
         for (const item of list.items) {
+          const itemText = item.text || extractPlainText(item.tokens)
+          if (itemText.trim()) {
+            metadata.paragraphs.push(itemText.trim())
+            extractTags(itemText).forEach((t) => tagSet.add(t))
+          }
           if (item.tokens) {
             collectLinks(item.tokens, metadata.links, currentLine)
             collectImages(item.tokens, metadata.images, currentLine)
           }
+        }
+      }
+
+      // ---- HTML 块 ----
+      else if (token.type === 'html') {
+        const htmlToken = token as Tokens.HTML
+        // HTML 块中的纯文本也加入正文
+        const textOnly = htmlToken.text.replace(/<[^>]*>/g, '').trim()
+        if (textOnly) {
+          metadata.paragraphs.push(textOnly)
         }
       }
 

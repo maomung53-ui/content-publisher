@@ -59,7 +59,10 @@ const toolbarCommands = [
 // ===== 主组件 =====
 
 export default function ContentEdit() {
-  const [content, setContent] = useState<string>('')
+  // 从 localStorage 恢复上次编辑内容，避免导航切换后丢失
+  const [content, setContent] = useState<string>(() => {
+    return localStorage.getItem('lastRawContent') || ''
+  })
   const [analysisOpen, setAnalysisOpen] = useState<boolean>(false)
   const [jsonOpen, setJsonOpen] = useState<boolean>(false)
   const [copied, setCopied] = useState<boolean>(false)
