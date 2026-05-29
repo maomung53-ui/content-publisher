@@ -2,24 +2,10 @@ import React, { useState, useCallback, useMemo, useRef, Component } from 'react'
 import MDEditor from '@uiw/react-md-editor'
 import '@uiw/react-md-editor/markdown-editor.css'
 import * as mdCommands from '@uiw/react-md-editor/commands'
+import { parseMarkdown, getContentStats } from '../utils/contentParser'
+import type { ContentMetadata } from '../utils/contentParser'
 
 // ===== 类型定义 =====
-
-/** 内容统计数据 */
-interface ContentStats {
-  /** 总字符数 */
-  totalChars: number
-  /** 段落数（以空行分隔） */
-  paragraphCount: number
-  /** 是否包含代码块（```标记） */
-  hasCodeBlock: boolean
-  /** 是否包含表格（| 标记） */
-  hasTable: boolean
-  /** 图片数量（![]()语法） */
-  imageCount: number
-  /** 外链数量（[]()语法，排除图片） */
-  linkCount: number
-}
 
 /** 错误边界组件 Props */
 interface EditorErrorBoundaryProps {
@@ -56,8 +42,10 @@ class EditorErrorBoundary extends Component<EditorErrorBoundaryProps, EditorErro
   render() {
     if (this.state.hasError) {
       return (
-        <div className="flex flex-col items-center justify-center rounded-lg border border-app-border bg-app-bg-tertiary"
-             style={{ height: 'calc(100vh - 200px)', minHeight: 400 }}>
+        <div
+          className="flex flex-col items-center justify-center rounded-lg border border-app-border bg-app-bg-tertiary"
+          style={{ height: 'calc(100vh - 200px)', minHeight: 400 }}
+        >
           <svg className="w-12 h-12 text-app-error mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
               d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -100,13 +88,17 @@ const toolbarCommands = [
 
 /**
  * 内容编辑页面
- * 提供 Markdown 编辑器、文件导入和内容解析统计功能
+ * 提供 Markdown 编辑器、文件导入、智能解析和统计功能
  */
 export default function ContentEdit() {
-  // Markdown 内容
+  // Markdown 原始内容
   const [content, setContent] = useState<string>('')
   // 解析结果面板是否展开
   const [analysisOpen, setAnalysisOpen] = useState<boolean>(false)
+  // JSON 展示面板是否展开
+  const [jsonOpen, setJsonOpen] = useState<boolean>(false)
+  // 复制按钮文字（用于反馈"已复制"）
+  const [copyLabel, setCopyLabel] = useState<string>('📋 复制 JSON')
   // 隐藏文件选择器引用
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -133,7 +125,6 @@ export default function ContentEdit() {
       alert('文件读取失败，请检查文件格式')
     }
     reader.readAsText(file)
-    // 重置 input.value 以便重复选择同一文件时仍能触发 onChange
     e.target.value = ''
   }, [])
 
@@ -147,24 +138,52 @@ export default function ContentEdit() {
     setAnalysisOpen((prev) => !prev)
   }, [])
 
-  // ---- 内容统计（实时计算，仅依赖 content）----
+  /** 切换 JSON 面板展开/折叠 */
+  const toggleJson = useCallback(() => {
+    setJsonOpen((prev) => !prev)
+  }, [])
 
-  const stats = useMemo<ContentStats>(() => {
-    const text = content || ''
-    // 以空行分隔段落
-    const paragraphs = text.split(/\n\s*\n/).filter((p) => p.trim().length > 0)
-    // 匹配非图片链接: 前面没有 ! 的 []() 语法
-    const linkRegex = /(?<!!)\[.*?\]\(.*?\)/g
-    // 匹配图片: ![]() 语法
-    const imageRegex = /!\[.*?\]\(.*?\)/g
+  /** 复制完整 ContentMetadata JSON 到剪贴板 */
+  const handleCopyJson = useCallback((metadata: ContentMetadata) => {
+    const json = JSON.stringify(metadata, null, 2)
+    navigator.clipboard.writeText(json).then(() => {
+      setCopyLabel('✅ 已复制')
+      setTimeout(() => setCopyLabel('📋 复制 JSON'), 2000)
+    }).catch(() => {
+      // 降级方案：使用传统方法复制
+      const textarea = document.createElement('textarea')
+      textarea.value = json
+      textarea.style.position = 'fixed'
+      textarea.style.opacity = '0'
+      document.body.appendChild(textarea)
+      textarea.select()
+      try {
+        document.execCommand('copy')
+        setCopyLabel('✅ 已复制')
+        setTimeout(() => setCopyLabel('📋 复制 JSON'), 2000)
+      } catch {
+        alert('复制失败，请手动选择 JSON 文本后 Ctrl+C')
+      }
+      document.body.removeChild(textarea)
+    })
+  }, [])
 
+  // ---- 解析 Markdown 内容（实时计算，仅依赖 content）----
+
+  /** 调用解析引擎，获取结构化元数据和统计摘要 */
+  const parsed = useMemo(() => {
+    const result = parseMarkdown(content)
+    if (!result.success || !result.data) {
+      return {
+        metadata: null as ContentMetadata | null,
+        stats: { totalChars: 0, paragraphCount: 0, hasCodeBlock: false, hasTable: false, imageCount: 0, linkCount: 0 },
+        error: result.error ?? null,
+      }
+    }
     return {
-      totalChars: text.length,
-      paragraphCount: paragraphs.length,
-      hasCodeBlock: /```/.test(text),
-      hasTable: /\|/.test(text),
-      imageCount: (text.match(imageRegex) || []).length,
-      linkCount: (text.match(linkRegex) || []).length,
+      metadata: result.data,
+      stats: getContentStats(result.data),
+      error: null,
     }
   }, [content])
 
@@ -186,7 +205,6 @@ export default function ContentEdit() {
           <span>📄</span>
           <span>导入 Markdown 文件</span>
         </button>
-        {/* 隐藏的文件选择器 */}
         <input
           ref={fileInputRef}
           type="file"
@@ -194,6 +212,14 @@ export default function ContentEdit() {
           onChange={handleFileChange}
           className="hidden"
         />
+
+        {/* 解析错误提示 */}
+        {parsed.error && (
+          <span className="text-xs text-app-error flex items-center gap-1">
+            <span>⚠️</span>
+            <span>{parsed.error.message}</span>
+          </span>
+        )}
       </div>
 
       {/* Markdown 编辑器区域 — 由 ErrorBoundary 包裹防止白屏 */}
@@ -203,16 +229,11 @@ export default function ContentEdit() {
             <MDEditor
               value={content}
               onChange={handleContentChange}
-              // 分栏模式：左侧编辑，右侧实时预览
               preview="live"
-              // 高度占满可用空间，最小 400px
               height="calc(100vh - 200px)"
               minHeight={400}
-              // 允许拖拽调整编辑/预览比例
               visibleDragbar={true}
-              // 自定义工具栏（仅保留指定按钮 + 中文 tooltip）
               commands={toolbarCommands}
-              // 编辑器 placeholder
               textareaProps={{
                 placeholder: '请输入或粘贴 Markdown 内容，支持标题、代码块、表格、图片...',
               }}
@@ -223,7 +244,7 @@ export default function ContentEdit() {
 
       {/* 内容解析结果 — 折叠面板 */}
       <div className="mt-3 flex-shrink-0 border border-app-border rounded-lg overflow-hidden">
-        {/* 面板标题栏（可点击折叠/展开） */}
+        {/* 面板标题栏 */}
         <button
           onClick={toggleAnalysis}
           className="flex items-center gap-2 w-full px-4 py-2.5 bg-app-bg-tertiary
@@ -235,17 +256,49 @@ export default function ContentEdit() {
           <span>📊 内容解析结果</span>
         </button>
 
-        {/* 面板内容 — 仅在展开时渲染 */}
         {analysisOpen && (
-          <div className="px-4 py-3 bg-app-bg-secondary border-t border-app-border">
+          <div className="px-4 py-3 bg-app-bg-secondary border-t border-app-border space-y-3">
+            {/* 统计摘要 */}
             <pre className="text-xs text-app-text-secondary font-mono leading-6 whitespace-pre-wrap select-text">
-{`总字符数：  ${stats.totalChars}
-段落数：    ${stats.paragraphCount}
-包含代码块：${stats.hasCodeBlock ? '是' : '否'}
-包含表格：  ${stats.hasTable ? '是' : '否'}
-图片数量：  ${stats.imageCount}
-外链数量：  ${stats.linkCount}`}
+{`总字符数：  ${parsed.stats.totalChars}
+段落数：    ${parsed.stats.paragraphCount}
+包含代码块：${parsed.stats.hasCodeBlock ? '是' : '否'}
+包含表格：  ${parsed.stats.hasTable ? '是' : '否'}
+图片数量：  ${parsed.stats.imageCount}
+外链数量：  ${parsed.stats.linkCount}`}
             </pre>
+
+            {/* JSON 元数据折叠面板 */}
+            {parsed.metadata && (
+              <div className="border-t border-app-border pt-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <button
+                    onClick={toggleJson}
+                    className="flex items-center gap-1.5 text-xs text-app-text-secondary
+                               hover:text-app-text-primary transition-colors"
+                  >
+                    <span className="transition-transform">
+                      {jsonOpen ? '▼' : '▶'}
+                    </span>
+                    <span>📋 结构化元数据（JSON）</span>
+                  </button>
+                  <button
+                    onClick={() => handleCopyJson(parsed.metadata!)}
+                    className="ml-auto flex items-center gap-1 px-2 py-0.5 rounded text-xs
+                               bg-app-accent text-white hover:bg-app-accent-hover transition-colors"
+                  >
+                    {copyLabel}
+                  </button>
+                </div>
+                {jsonOpen && (
+                  <pre className="text-xs text-app-text-secondary font-mono leading-5
+                                  whitespace-pre-wrap overflow-x-auto max-h-64 overflow-y-auto
+                                  bg-app-bg-primary rounded p-3 border border-app-border select-text">
+{JSON.stringify(parsed.metadata, null, 2)}
+                  </pre>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
