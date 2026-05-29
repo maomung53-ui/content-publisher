@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { forwardRef } from 'react'
 
 export interface GlassCardProps {
   children: React.ReactNode
@@ -7,37 +7,56 @@ export interface GlassCardProps {
   className?: string
   onClick?: () => void
   animationDelay?: string
+  /** 内联样式（用于 stagger transition-delay 等） */
+  style?: React.CSSProperties
+  /** 是否启用滚动入场动画（需配合父组件 useRevealOnScroll） */
+  reveal?: boolean
+  /** 是否启用涟漪点击效果 */
+  ripple?: boolean
 }
 
 /**
  * 液态玻璃卡片
- * 45° 高光渐变 + 双实线边框 + 4 层阴影 + ::after 光晕
+ * 支持 hover lift + ripple + reveal 入场动画
  */
-export default function GlassCard({
-  children,
-  hoverable = false,
-  padding = 'md',
-  className = '',
-  onClick,
-  animationDelay,
-}: GlassCardProps) {
+const GlassCard = forwardRef<HTMLDivElement, GlassCardProps>(function GlassCard(
+  {
+    children,
+    hoverable = false,
+    padding = 'md',
+    className = '',
+    onClick,
+    animationDelay,
+    style,
+    reveal = false,
+    ripple = false,
+  },
+  ref,
+) {
   const isInteractive = hoverable || !!onClick
   const pad = { sm: 'p-6', md: 'p-8', lg: 'p-10' }[padding]
 
   return (
     <div
+      ref={ref}
       onClick={onClick}
+      style={style}
       className={[
         'liquid-glass',
         isInteractive ? 'liquid-glass-hoverable' : '',
+        isInteractive ? 'hover-lift' : '',
         isInteractive ? 'cursor-pointer select-none' : '',
+        ripple ? 'ripple' : '',
         pad,
-        animationDelay ? 'animate-spring-in opacity-0 [animation-fill-mode:forwards]' : '',
+        reveal ? 'reveal-card' : '',
+        animationDelay && !reveal ? 'animate-spring-in opacity-0 [animation-fill-mode:forwards]' : '',
         className,
       ].filter(Boolean).join(' ')}
-      style={animationDelay ? { animationDelay } : undefined}
+      style={animationDelay && !reveal ? { animationDelay } : undefined}
     >
       {children}
     </div>
   )
-}
+})
+
+export default GlassCard
