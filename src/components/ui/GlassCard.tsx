@@ -10,8 +10,8 @@ export interface GlassCardProps {
 }
 
 /**
- * Apple 官网风格玻璃卡片
- * 纯白底 + 20px 高斯模糊 + 柔和阴影 + 20px 大圆角
+ * 液态玻璃卡片
+ * 45° 高光渐变 + 双实线边框 + 4 层阴影 + ::after 光晕
  */
 export default function GlassCard({
   children,
@@ -28,14 +28,10 @@ export default function GlassCard({
     <div
       onClick={onClick}
       className={[
-        'bg-surface-card backdrop-blur-glass',
-        'border border-divider-light',
-        'rounded-2xl shadow-md',
-        pad,
+        'liquid-glass',
+        isInteractive ? 'liquid-glass-hoverable' : '',
         isInteractive ? 'cursor-pointer select-none' : '',
-        isInteractive
-          ? 'transition-all duration-[400ms] hover:-translate-y-[2px] hover:shadow-lg active:translate-y-0 active:scale-[0.995]'
-          : '',
+        pad,
         animationDelay ? 'animate-spring-in opacity-0 [animation-fill-mode:forwards]' : '',
         className,
       ].filter(Boolean).join(' ')}
