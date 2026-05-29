@@ -1,15 +1,25 @@
+import { useNavigate } from 'react-router-dom'
+import GlassCard from '../components/ui/GlassCard'
+import EmptyState from '../components/ui/EmptyState'
+
 /**
- * 发布管理页 — 管理内容发布计划与状态
+ * 发布管理页 — Apple 风格 placeholder
  */
 export default function PublishManage() {
-  return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold text-app-text-primary mb-2">发布管理</h1>
-      <p className="text-app-text-secondary">管理发布计划、版本与上线下线操作</p>
+  const navigate = useNavigate()
 
-      <div className="mt-6 rounded-lg border border-dashed border-app-border bg-app-bg-tertiary p-12 text-center">
-        <p className="text-app-text-muted">发布管理列表区 — 待实现</p>
-      </div>
+  return (
+    <div className="max-w-[1200px] mx-auto px-page-x py-section animate-fade-in">
+      <h1 className="text-title text-text-primary mb-2">发布管理</h1>
+      <p className="text-body text-text-secondary mb-section">管理发布计划、版本与上线下线操作</p>
+
+      <GlassCard>
+        <EmptyState
+          title="发布管理即将上线"
+          description="此功能正在开发中，届时您可在此管理所有平台的发布计划与状态。"
+          action={{ label: '返回首页', onClick: () => navigate('/') }}
+        />
+      </GlassCard>
     </div>
   )
 }

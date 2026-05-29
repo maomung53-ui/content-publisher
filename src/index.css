@@ -1,4 +1,5 @@
 @import './styles/liquid-glass.css';
+@import './styles/animations.css';
 
 @tailwind base;
 @tailwind components;
@@ -23,6 +24,19 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  font-feature-settings: "kern" 1, "liga" 1;
+}
+
+/* 标题通用样式——与正文拉开差距 */
+h1, h2, h3,
+.text-hero, .text-display, .text-title, .text-subtitle, .text-heading {
+  font-feature-settings: "kern" 1;
+}
+
+/* 正文行距优化 */
+p, .text-body, .text-body-sm {
+  line-height: 1.6;
+  letter-spacing: -0.01em;
 }
 
 /* ===== Apple 风格选中文本 ===== */

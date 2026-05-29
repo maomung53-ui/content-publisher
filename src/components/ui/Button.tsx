@@ -14,7 +14,7 @@ export interface ButtonProps {
 }
 
 const baseStyles: Record<ButtonVariant, string> = {
-  primary: 'bg-accent-blue text-white hover:bg-accent-blue-hover active:bg-accent-blue-active',
+  primary: 'bg-accent-blue !text-white hover:bg-accent-blue-hover active:bg-accent-blue-active shadow-button hover:shadow-button-hover',
   secondary: 'bg-surface-card text-text-primary border border-divider-light hover:bg-surface-card-hover',
   tertiary: 'text-accent-blue bg-transparent hover:bg-accent-blue/[0.06] active:bg-accent-blue/[0.1]',
   ghost: 'text-text-secondary bg-transparent hover:bg-black/[0.04] hover:text-text-primary active:bg-black/[0.07]',
