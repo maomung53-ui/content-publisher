@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useRef, Component } from 'react'
+import React, { useState, useCallback, useMemo, useRef, Component, useEffect } from 'react'
 import MDEditor from '@uiw/react-md-editor'
 import '@uiw/react-md-editor/markdown-editor.css'
 import * as mdCommands from '@uiw/react-md-editor/commands'
@@ -185,6 +185,17 @@ export default function ContentEdit() {
       stats: getContentStats(result.data),
       error: null,
     }
+  }, [content])
+
+  // 解析成功后将元数据和原始内容持久化到 localStorage，供「平台适配」页面读取
+  useEffect(() => {
+    if (parsed.metadata) {
+      localStorage.setItem('lastContentMetadata', JSON.stringify(parsed.metadata))
+    }
+  }, [parsed.metadata])
+
+  useEffect(() => {
+    localStorage.setItem('lastRawContent', content)
   }, [content])
 
   // ---- 渲染 ----
