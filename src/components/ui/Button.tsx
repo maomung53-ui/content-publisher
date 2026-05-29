@@ -13,26 +13,22 @@ export interface ButtonProps {
   className?: string
 }
 
-const variantStyles: Record<ButtonVariant, string> = {
-  primary:
-    'bg-accent-blue text-white shadow-button hover:bg-accent-blue-hover hover:shadow-button-hover active:bg-accent-blue-active',
-  secondary:
-    'bg-surface-card text-text-primary border border-divider-light hover:bg-surface-card-hover active:bg-surface-card',
-  tertiary:
-    'text-accent-blue bg-transparent hover:bg-accent-blue/[0.06] active:bg-accent-blue/[0.1]',
-  ghost:
-    'text-text-secondary bg-transparent hover:bg-black/[0.04] hover:text-text-primary active:bg-black/[0.07]',
+const baseStyles: Record<ButtonVariant, string> = {
+  primary: 'bg-accent-blue text-white hover:bg-accent-blue-hover active:bg-accent-blue-active',
+  secondary: 'bg-surface-card text-text-primary border border-divider-light hover:bg-surface-card-hover',
+  tertiary: 'text-accent-blue bg-transparent hover:bg-accent-blue/[0.06] active:bg-accent-blue/[0.1]',
+  ghost: 'text-text-secondary bg-transparent hover:bg-black/[0.04] hover:text-text-primary active:bg-black/[0.07]',
 }
 
 const sizeStyles: Record<ButtonSize, string> = {
-  sm: 'h-9 px-4 text-body-sm rounded-md',
-  md: 'h-11 px-6 text-body-sm rounded-md',
-  lg: 'h-13 px-8 text-body rounded-md',
+  sm: 'h-9 px-4 text-body-sm',
+  md: 'h-11 px-6 text-body-sm',
+  lg: 'h-13 px-8 text-body',
 }
 
 /**
- * Apple 官网风格按钮
- * 大圆角 14px / 悬浮微上移 / 按下微缩
+ * Apple 液态玻璃按钮
+ * liquid-glass-sm 提供 45° 高光 + 多层内阴影 + 双线边框
  */
 export default function Button({
   variant = 'primary',
@@ -44,16 +40,18 @@ export default function Button({
   className = '',
 }: ButtonProps) {
   const isDisabled = disabled || loading
+  const isSecondary = variant === 'secondary'
 
   return (
     <button
       onClick={onClick}
       disabled={isDisabled}
       className={[
-        'inline-flex items-center justify-center gap-2 font-medium tracking-[-0.01em]',
+        'inline-flex items-center justify-center gap-2 font-medium tracking-[-0.01em] rounded-md',
         'transition-all duration-200',
         'hover:-translate-y-[1px] active:translate-y-0 active:scale-[0.98]',
-        variantStyles[variant],
+        isSecondary ? 'liquid-glass-sm' : '',
+        baseStyles[variant],
         sizeStyles[size],
         isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer',
         className,

@@ -22,16 +22,12 @@ interface PlatformResult {
 }
 
 const ALL_PLATFORMS: Platform[] = [Platform.wechat, Platform.zhihu, Platform.xiaohongshu, Platform.bilibili]
-
 const INTENSITY_OPTIONS: { value: AdaptationIntensity; label: string }[] = [
   { value: 'low', label: '低 — 仅润色格式' },
   { value: 'medium', label: '中 — 微调语气' },
   { value: 'high', label: '高 — 深度改写' },
 ]
 
-/**
- * 平台适配页 — Apple 官网明亮风格
- */
 export default function PlatformAdapt() {
   const [selected, setSelected] = useState<Set<Platform>>(new Set(ALL_PLATFORMS))
   const [results, setResults] = useState<PlatformResult[] | null>(null)
@@ -46,26 +42,16 @@ export default function PlatformAdapt() {
   const hasContent = rawContent !== null && rawContent.trim().length > 0
 
   const togglePlatform = useCallback((platform: Platform) => {
-    setSelected((prev) => {
-      const next = new Set(prev)
-      next.has(platform) ? next.delete(platform) : next.add(platform)
-      return next
-    })
+    setSelected((prev) => { const n = new Set(prev); n.has(platform) ? n.delete(platform) : n.add(platform); return n })
     setResults(null)
   }, [])
 
   const toggleCompare = useCallback((platform: Platform) => {
-    setResults((prev) => {
-      if (!prev) return null
-      return prev.map((r) => (r.adapted.platform === platform ? { ...r, compareOpen: !r.compareOpen } : r))
-    })
+    setResults((prev) => prev?.map((r) => (r.adapted.platform === platform ? { ...r, compareOpen: !r.compareOpen } : r)) ?? null)
   }, [])
 
   const updateAiResult = useCallback((platform: Platform, aiBody: string | null, aiError: string | null) => {
-    setResults((prev) => {
-      if (!prev) return null
-      return prev.map((r) => (r.adapted.platform === platform ? { ...r, aiBody, aiError } : r))
-    })
+    setResults((prev) => prev?.map((r) => (r.adapted.platform === platform ? { ...r, aiBody, aiError } : r)) ?? null)
     setAiLoadingPlatforms((prev) => { const n = new Set(prev); n.delete(platform); return n })
   }, [])
   adaptCallbackRef.current = updateAiResult
@@ -74,7 +60,6 @@ export default function PlatformAdapt() {
     if (!rawContent) return
     const selectedList = Array.from(selected)
     if (selectedList.length === 0) return
-
     setAdapting(true); setResults(null)
     await new Promise((r) => setTimeout(r, 50))
 
@@ -94,31 +79,32 @@ export default function PlatformAdapt() {
         if (!r) return
         try {
           const body = await aiAdaptContent(r.adapted.body, platform, aiIntensity)
-          if (body.startsWith('AI 适配失败')) { adaptCallbackRef.current?.(platform, null, body) }
-          else { adaptCallbackRef.current?.(platform, body, null) }
-        } catch { adaptCallbackRef.current?.(platform, null, 'AI 适配失败：处理异常') }
+          if (body.startsWith('AI 适配失败')) adaptCallbackRef.current?.(platform, null, body)
+          else adaptCallbackRef.current?.(platform, body, null)
+        } catch { adaptCallbackRef.current?.(platform, null, 'AI 适配失败') }
       })
       await Promise.allSettled(aiPromises)
       setAiRunning(false); setAiLoadingPlatforms(new Set())
     }
   }, [rawContent, selected, aiEnabled, aiIntensity])
 
+  // ---- 渲染 ----
+
   return (
     <div className="max-w-[1200px] mx-auto px-page-x py-section animate-fade-in">
       <h2 className="text-subtitle text-text-primary mb-1">平台适配</h2>
       <p className="text-body-sm text-text-secondary mb-element">根据各平台规则自动转换内容格式，预览适配结果</p>
 
-      {/* 空状态 */}
       {!hasContent && (
         <GlassCard>
-          <EmptyState icon="📝" title="尚未解析内容"
-            description="请先前往「内容编辑」页面输入 Markdown 内容并展开解析面板，系统会自动保存解析结果。" />
+          <EmptyState title="尚未解析内容"
+            description="请先前往「内容编辑」页面输入 Markdown 内容并展开解析面板。" />
         </GlassCard>
       )}
 
       {hasContent && (
         <>
-          {/* 平台选择区 */}
+          {/* 平台选择 */}
           <GlassCard className="mb-element animate-slide-up">
             <h3 className="text-heading text-text-primary mb-tight">选择目标平台</h3>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -130,9 +116,7 @@ export default function PlatformAdapt() {
                   <div key={platform} onClick={() => togglePlatform(platform)}
                     className={[
                       'flex items-center gap-3 px-4 py-3 rounded-md cursor-pointer select-none border transition-all duration-[400ms]',
-                      isSelected
-                        ? 'bg-surface-card shadow-sm'
-                        : 'bg-transparent border-transparent hover:bg-black/[0.02]',
+                      isSelected ? 'bg-surface-card shadow-sm' : 'bg-transparent border-transparent hover:bg-black/[0.02]',
                     ].join(' ')}
                     style={{ borderLeftWidth: isSelected ? '3px' : '0', borderLeftColor: isSelected ? color : 'transparent' }}>
                     <span className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
@@ -146,21 +130,19 @@ export default function PlatformAdapt() {
             </div>
           </GlassCard>
 
-          {/* AI 控制区 */}
+          {/* AI 控制 */}
           <GlassCard className="mb-element animate-slide-up" animationDelay="0.1s">
             <div className="flex items-center gap-4 flex-wrap">
               <div className="flex items-center gap-3">
                 <ToggleSwitch checked={aiEnabled} onChange={(v) => { setAiEnabled(v); setResults(null) }} />
-                <span className="text-body-sm font-medium text-text-primary">🤖 启用 AI 风格适配</span>
+                <span className="text-body-sm font-medium text-text-primary">启用 AI 风格适配</span>
               </div>
               {aiEnabled && (
                 <div className="flex items-center gap-2">
                   <span className="text-caption text-text-secondary">改写强度：</span>
                   <select value={aiIntensity}
                     onChange={(e) => { setAiIntensity(e.target.value as AdaptationIntensity); setResults(null) }}
-                    className="px-3 py-1.5 rounded-sm border border-divider-light bg-surface-card text-body-sm text-text-primary
-                               focus:outline-none focus:border-accent-blue/40 focus:ring-[3px] focus:ring-accent-blue/8
-                               appearance-none cursor-pointer transition-all">
+                    className="liquid-input px-3 py-1.5 text-body-sm text-text-primary cursor-pointer transition-all">
                     {INTENSITY_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
                 </div>
@@ -173,7 +155,7 @@ export default function PlatformAdapt() {
 
           {/* 执行按钮 */}
           <Button variant="primary" size="md" loading={adapting} disabled={selected.size === 0} onClick={handleAdapt}>
-            {aiRunning ? '🤖 AI 适配中...' : aiEnabled ? '🤖 执行 AI 适配' : '🔄 执行格式适配'}
+            {aiRunning ? 'AI 适配中...' : aiEnabled ? '执行 AI 适配' : '执行格式适配'}
           </Button>
           {selected.size === 0 && <p className="mt-2 text-caption text-text-tertiary">请至少选择一个目标平台</p>}
 
@@ -190,11 +172,10 @@ export default function PlatformAdapt() {
 
                 return (
                   <GlassCard key={adapted.platform} animationDelay={`${i * 0.1}s`}>
-                    {/* 卡片标题栏 */}
                     <div className="flex items-center gap-2 mb-4">
                       <span className="inline-block w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
                       <h3 className="text-heading text-text-primary">{rule.name}</h3>
-                      {hasAiResult && <Badge variant="accent">🤖 AI 优化</Badge>}
+                      {hasAiResult && <Badge variant="accent">AI 优化</Badge>}
                       {isAiLoading && (
                         <span className="ml-auto flex items-center gap-1 text-caption text-text-tertiary">
                           <svg className="animate-spin w-3 h-3" fill="none" viewBox="0 0 24 24">
@@ -207,15 +188,11 @@ export default function PlatformAdapt() {
                     </div>
 
                     <div className="space-y-4">
-                      {/* 标题 */}
                       <div>
                         <span className="text-label text-text-tertiary uppercase">标题</span>
-                        <p className="text-body-sm font-semibold text-text-primary mt-1 break-all">
-                          {adapted.title || '(无标题)'}
-                        </p>
+                        <p className="text-body-sm font-semibold text-text-primary mt-1 break-all">{adapted.title || '(无标题)'}</p>
                       </div>
 
-                      {/* 正文 */}
                       <div>
                         <div className="flex items-center justify-between">
                           <span className="text-label text-text-tertiary uppercase">正文（{displayBody.length} 字）</span>
@@ -227,8 +204,6 @@ export default function PlatformAdapt() {
                             </button>
                           )}
                         </div>
-
-                        {/* 对比视图 */}
                         {result.compareOpen && hasAiResult && (
                           <div className="mt-2 grid grid-cols-2 gap-3">
                             <div>
@@ -248,7 +223,6 @@ export default function PlatformAdapt() {
                             </div>
                           </div>
                         )}
-
                         {(!result.compareOpen || !hasAiResult) && (
                           <p className="text-body-sm text-text-secondary mt-1 leading-relaxed whitespace-pre-wrap break-all">
                             {displayBody.slice(0, 200)}{displayBody.length > 200 && ' ...'}
@@ -256,48 +230,35 @@ export default function PlatformAdapt() {
                         )}
                       </div>
 
-                      {/* 编辑区 */}
                       <div>
                         <span className="text-label text-text-tertiary uppercase">编辑正文</span>
                         <textarea value={displayBody}
                           onChange={(e) => {
-                            setResults((prev) => {
-                              if (!prev) return null
-                              return prev.map((r) => {
-                                if (r.adapted.platform !== adapted.platform) return r
-                                if (r.aiBody !== null) return { ...r, aiBody: e.target.value }
-                                return { ...r, adapted: { ...r.adapted, body: e.target.value } }
-                              })
-                            })
+                            setResults((prev) => prev?.map((r) => {
+                              if (r.adapted.platform !== adapted.platform) return r
+                              if (r.aiBody !== null) return { ...r, aiBody: e.target.value }
+                              return { ...r, adapted: { ...r.adapted, body: e.target.value } }
+                            }) ?? null)
                           }}
-                          className="mt-1 w-full h-24 rounded-sm border border-divider-light bg-surface-card
-                                     text-body-sm text-text-primary font-sans leading-relaxed p-3 resize-y
-                                     focus:outline-none focus:border-accent-blue/40 focus:ring-[3px] focus:ring-accent-blue/8
-                                     transition-all duration-200"
+                          className="liquid-input mt-1 w-full h-24 text-body-sm text-text-primary font-sans leading-relaxed p-3 resize-y"
                         />
                         {result.aiError && (
                           <div className="mt-2 rounded-sm border-l-2 border-l-status-warning bg-status-warning/[0.04] px-3 py-2">
-                            <p className="text-body-sm text-status-warning flex items-center gap-1">
-                              <span>⚠️</span><span>{result.aiError}</span>
-                            </p>
+                            <p className="text-body-sm text-status-warning">{result.aiError}</p>
                           </div>
                         )}
                       </div>
 
-                      {/* 标签 */}
                       <div>
                         <span className="text-label text-text-tertiary uppercase">标签（{adapted.tags.length} 个）</span>
                         <div className="flex flex-wrap gap-1 mt-1">
                           {adapted.tags.length > 0 ? adapted.tags.map((tag) => (
                             <span key={tag} className="px-2 py-0.5 rounded-pill text-label font-medium"
-                                  style={{ backgroundColor: `${color}12`, color }}>
-                              #{tag}
-                            </span>
+                                  style={{ backgroundColor: `${color}12`, color }}>#{tag}</span>
                           )) : <span className="text-caption text-text-tertiary">无标签</span>}
                         </div>
                       </div>
 
-                      {/* 图片 */}
                       <div>
                         <span className="text-label text-text-tertiary uppercase">图片数量</span>
                         <p className="text-body-sm text-text-primary mt-0.5">
@@ -305,12 +266,9 @@ export default function PlatformAdapt() {
                         </p>
                       </div>
 
-                      {/* 警告 */}
                       {adapted.warnings.length > 0 && (
                         <div className="rounded-sm border-l-2 border-l-status-warning bg-status-warning/[0.04] px-3 py-2">
-                          <span className="text-label font-medium text-status-warning flex items-center gap-1 mb-1">
-                            <span>⚠️</span><span>适配警告</span>
-                          </span>
+                          <span className="text-label font-medium text-status-warning block mb-1">适配警告</span>
                           <ul className="space-y-0.5">
                             {adapted.warnings.map((w, i) => <li key={i} className="text-caption text-status-warning/90">{w}</li>)}
                           </ul>
