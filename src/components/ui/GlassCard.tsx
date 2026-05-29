@@ -40,7 +40,6 @@ const GlassCard = forwardRef<HTMLDivElement, GlassCardProps>(function GlassCard(
     <div
       ref={ref}
       onClick={onClick}
-      style={style}
       className={[
         'liquid-glass',
         isInteractive ? 'liquid-glass-hoverable' : '',
@@ -52,9 +51,15 @@ const GlassCard = forwardRef<HTMLDivElement, GlassCardProps>(function GlassCard(
         animationDelay && !reveal ? 'animate-spring-in opacity-0 [animation-fill-mode:forwards]' : '',
         className,
       ].filter(Boolean).join(' ')}
-      style={animationDelay && !reveal ? { animationDelay } : undefined}
+      style={{
+        ...style,
+        ...(animationDelay && !reveal ? { animationDelay } : {}),
+      }}
     >
-      {children}
+      {/* 内容层 — 确保在伪元素之上 */}
+      <div className="relative z-[1]">
+        {children}
+      </div>
     </div>
   )
 })
